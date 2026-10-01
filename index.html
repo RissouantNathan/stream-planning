@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="fr" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>kouyabor — Portal & Links</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            purple: '#9146FF',
+                            neon: '#A970FF',
+                            dark: '#0E0E10',
+                            card: '#18181B',
+                            border: '#27272A'
+                        }
+                    },
+                    boxShadow: {
+                        'neon-glow': '0 0 25px rgba(145, 70, 255, 0.35)',
+                        'neon-hover': '0 0 35px rgba(169, 112, 255, 0.5)'
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Google Fonts & FontAwesome CDN -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Custom CSS Styles & Animations -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0E0E10;
+            color: #EFEFF1;
+        }
+
+        /* Animated Glowing Radial Gradients Background */
+        .bg-glow-mesh {
+            background-image: 
+                radial-gradient(at 20% 20%, rgba(145, 70, 255, 0.15) 0px, transparent 50%),
+                radial-gradient(at 80% 80%, rgba(119, 44, 232, 0.12) 0px, transparent 50%),
+                radial-gradient(at 50% 50%, rgba(169, 112, 255, 0.08) 0px, transparent 60%);
+        }
+
+        /* Floating animation for cards */
+        @keyframes subtleFloat {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-4px); }
+        }
+
+        .animate-float {
+            animation: subtleFloat 4s ease-in-out infinite;
+        }
+
+        /* Shimmer Border Gradient Animation */
+        .gradient-border-card {
+            position: relative;
+            background: #18181B;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .gradient-border-card::before {
+            content: '';
+            position: absolute;
+            inset: -1px;
+            border-radius: 1rem;
+            padding: 1px;
+            background: linear-gradient(135deg, rgba(145, 70, 255, 0.6), rgba(39, 39, 42, 0.4), rgba(169, 112, 255, 0.6));
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            opacity: 0.5;
+            transition: opacity 0.3s ease;
+        }
+
+        .gradient-border-card:hover::before {
+            opacity: 1;
+        }
+
+        /* Subtle glowing title gradient */
+        .neon-title-gradient {
+            background: linear-gradient(135deg, #FFFFFF 0%, #E0D3FF 50%, #A970FF 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-brand-dark bg-glow-mesh flex flex-col justify-between items-center p-4 sm:p-6 antialiased selection:bg-brand-purple selection:text-white">
+
+    <!-- Top Spacer -->
+    <div></div>
+
+    <!-- Main Center Portal Container -->
+    <main class="w-full max-w-md my-auto flex flex-col items-center">
+        
+        <!-- Streamer / Dev Profile Header -->
+        <div class="flex flex-col items-center text-center mb-8">
+            <div class="relative group mb-4">
+                <!-- Glowing effect behind avatar -->
+                <div class="absolute -inset-1 bg-gradient-to-r from-brand-purple to-brand-neon rounded-full blur opacity-75 group-hover:opacity-100 transition duration-500 group-hover:scale-105"></div>
+                
+                <img src="images/avatar.webp" 
+                     alt="Avatar kouyabor" 
+                     class="relative w-24 h-24 sm:w-28 sm:h-28 rounded-full border-2 border-brand-purple object-cover shadow-2xl">
+                
+                <!-- Online Badge -->
+                <span class="absolute bottom-1 right-1 bg-green-500 w-4 h-4 rounded-full border-2 border-brand-dark shadow-md" title="En ligne"></span>
+            </div>
+
+            <!-- Username & Tagline -->
+            <h1 class="text-3xl font-extrabold tracking-tight neon-title-gradient mb-1">
+                Kouyabor
+            </h1>
+            <div class="flex items-center gap-2 mb-3">
+                <span class="bg-brand-purple/20 text-brand-neon border border-brand-purple/30 text-xs font-semibold px-2.5 py-0.5 rounded-full flex items-center gap-1.5">
+                    <i class="fa-solid fa-code text-[10px]"></i> Streamer
+                </span>
+            </div>
+            <p class="text-xs sm:text-sm text-gray-400 max-w-xs leading-relaxed">
+                Gaming & Bonnes vibes. Retrouvez tout mon univers ici.
+            </p>
+        </div>
+
+        <!-- Single Feature Card: Planning Link -->
+        <div class="w-full space-y-4">
+            <a href="pages/streamschedulemanager.html" 
+               class="gradient-border-card group block w-full rounded-2xl p-5 shadow-xl transition-all duration-300 hover:shadow-neon-hover hover:-translate-y-1">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-4">
+                        <!-- Card Icon Container -->
+                        <div class="w-12 h-12 rounded-xl bg-brand-purple/20 border border-brand-purple/30 flex items-center justify-center text-brand-neon group-hover:bg-brand-purple group-hover:text-white transition-all duration-300 shadow-neon-glow">
+                            <i class="fa-solid fa-calendar-days text-xl"></i>
+                        </div>
+                        
+                        <!-- Card Text Content -->
+                        <div class="text-left">
+                            <h2 class="text-base font-bold text-white group-hover:text-brand-neon transition-colors flex items-center gap-2">
+                                Planning de Stream
+                                <span class="flex h-2 w-2 relative">
+                                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-neon opacity-75"></span>
+                                  <span class="relative inline-flex rounded-full h-2 w-2 bg-brand-purple"></span>
+                                </span>
+                            </h2>
+                            <p class="text-xs text-gray-400 mt-0.5">
+                                Consulter les horaires et les jeux de la semaine
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Chevron Icon -->
+                    <div class="text-gray-500 group-hover:text-white group-hover:translate-x-1 transition-all duration-300 pl-2">
+                        <i class="fa-solid fa-chevron-right text-sm"></i>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <!-- Social Media Footer Links -->
+        <div class="mt-10 flex items-center justify-center gap-3">
+            <a href="https://twitch.tv" target="_blank" rel="noopener noreferrer" 
+               class="w-10 h-10 rounded-xl bg-brand-card border border-brand-border text-gray-400 hover:text-brand-neon hover:border-brand-purple/50 flex items-center justify-center transition-all duration-200 hover:-translate-y-1" 
+               title="Twitch">
+                <i class="fa-brands fa-twitch text-base"></i>
+            </a>
+            
+            <a href="https://youtube.com" target="_blank" rel="noopener noreferrer" 
+               class="w-10 h-10 rounded-xl bg-brand-card border border-brand-border text-gray-400 hover:text-red-500 hover:border-red-500/50 flex items-center justify-center transition-all duration-200 hover:-translate-y-1" 
+               title="YouTube">
+                <i class="fa-brands fa-youtube text-base"></i>
+            </a>
+
+            <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" 
+               class="w-10 h-10 rounded-xl bg-brand-card border border-brand-border text-gray-400 hover:text-sky-400 hover:border-sky-400/50 flex items-center justify-center transition-all duration-200 hover:-translate-y-1" 
+               title="X (Twitter)">
+                <i class="fa-brands fa-x-twitter text-base"></i>
+            </a>
+
+            <a href="https://discord.gg" target="_blank" rel="noopener noreferrer" 
+               class="w-10 h-10 rounded-xl bg-brand-card border border-brand-border text-gray-400 hover:text-indigo-400 hover:border-indigo-400/50 flex items-center justify-center transition-all duration-200 hover:-translate-y-1" 
+               title="Discord">
+                <i class="fa-brands fa-discord text-base"></i>
+            </a>
+        </div>
+
+    </main>
+
+    <!-- Footer Copyright -->
+    <footer class="py-4 text-center text-xs text-gray-600">
+        <p>© 2026 Nakopsy — Tous droits réservés</p>
+    </footer>
+
+</body>
+</html>
