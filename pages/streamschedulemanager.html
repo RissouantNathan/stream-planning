@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="fr" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stream Scheduler - Planning de Stream Pro</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        twitch: {
+                            DEFAULT: '#9146FF',
+                            hover: '#772CE8',
+                            dark: '#18181B',
+                            bg: '#0E0E10',
+                            card: '#1F1F23',
+                            border: '#2D2D35',
+                            neon: '#A970FF'
+                        }
+                    },
+                    boxShadow: {
+                        'twitch-glow': '0 0 15px rgba(145, 70, 255, 0.4)',
+                        'live-glow': '0 0 12px rgba(239, 68, 68, 0.6)'
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Google Fonts & FontAwesome Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- html2canvas pour la fonctionnalité d'export d'image -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0E0E10;
+            color: #EFEFF1;
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0E0E10;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #2D2D35;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #9146FF;
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, #A970FF 0%, #9146FF 50%, #772CE8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .card-hover-effect {
+            transition: all 0.25s ease-in-out;
+        }
+        .card-hover-effect:hover {
+            transform: translateY(-2px);
+            border-color: #9146FF;
+            box-shadow: 0 4px 20px rgba(145, 70, 255, 0.25);
+        }
+
+        /* Mode public spécifique */
+        .public-mode .admin-only {
+            display: none !important;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between antialiased selection:bg-twitch selection:text-white">
+
+    <!-- Header Navbar -->
+    <header class="border-b border-twitch-border bg-twitch-dark/90 backdrop-blur sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-twitch flex items-center justify-center text-white shadow-twitch-glow font-bold text-xl">
+                    <i class="fa-solid font-black fa-broadcast-tower"></i>
+                </div>
+                <div>
+                    <h1 class="font-extrabold text-lg sm:text-xl tracking-tight flex items-center gap-2">
+                        <span>STREAM</span><span class="gradient-text">SCHEDULE</span>
+                    </h1>
+                    <p class="text-xs text-gray-400 hidden sm:block">Planificateur & Générateur de planning de Stream</p>
+                </div>
+            </div>
+
+            <!-- Header Controls -->
+            <div class="flex items-center gap-3">
+                <!-- Toggle View Mode (Public vs Admin) -->
+                <div class="bg-twitch-bg p-1 rounded-lg border border-twitch-border flex items-center text-xs font-semibold">
+                    <button id="btnModeAdmin" onclick="setMode('admin')" class="px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-all bg-twitch text-white shadow-sm">
+                        <i class="fa-solid fa-pen-to-square"></i>
+                        <span class="hidden sm:inline">Édition</span>
+                    </button>
+                    <button id="btnModePublic" onclick="setMode('public')" class="px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-all text-gray-400 hover:text-white">
+                        <i class="fa-solid fa-eye"></i>
+                        <span class="hidden sm:inline">Vue Publique</span>
+                    </button>
+                </div>
+
+                <!-- Export Button -->
+                <button onclick="exportScheduleAsImage()" class="bg-twitch-border hover:bg-twitch/30 text-white border border-twitch-border text-xs sm:text-sm font-semibold px-3 py-1.5 rounded-lg flex items-center gap-2 transition">
+                    <i class="fa-solid fa-download text-twitch-neon"></i>
+                    <span class="hidden sm:inline">Exporter (PNG)</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Application Container -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full">
+
+        <!-- Streamer Profile & Links Header Section -->
+        <div id="captureArea" class="bg-twitch-dark border border-twitch-border rounded-2xl p-6 mb-8 relative overflow-hidden shadow-xl">
+            <div class="absolute -right-16 -top-16 w-64 h-64 bg-twitch/10 rounded-full blur-3xl pointer-events-none"></div>
+
+            <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative z-10">
+                <div class="flex items-center gap-4">
+                    <div class="relative">
+                        <img id="channelAvatar" src="https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=150&auto=format&fit=crop&q=80" alt="Avatar Streamer" class="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-2 border-twitch object-cover shadow-twitch-glow">
+                        <span class="absolute bottom-0 right-0 bg-red-600 text-white text-[10px] uppercase font-bold px-1.5 py-0.5 rounded-full border border-twitch-dark shadow-live-glow flex items-center gap-1">
+                            <span class="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span> Live
+                        </span>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h2 id="channelNameDisplay" class="text-xl sm:text-2xl font-black text-white tracking-wide">MON_PSEUDO_STREAM</h2>
+                            <button onclick="openProfileModal()" class="admin-only text-gray-400 hover:text-twitch-neon transition text-sm">
+                                <i class="fa-solid fa-gear"></i>
+                            </button>
+                        </div>
+                        <p id="channelBioDisplay" class="text-sm text-gray-400 mt-0.5 max-w-lg">Bienvenue sur mon planning de la semaine ! Retrouvez-moi tous les jours en live.</p>
+                    </div>
+                </div>
+
+                <!-- Social Links -->
+                <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                    <a id="linkTwitch" href="https://twitch.tv" target="_blank" class="flex-1 md:flex-none bg-twitch/10 hover:bg-twitch/20 text-twitch-neon border border-twitch/30 px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition">
+                        <i class="fa-brands fa-twitch text-base"></i>
+                        <span>Twitch</span>
+                    </a>
+                    <a id="linkYoutube" href="https://youtube.com" target="_blank" class="flex-1 md:flex-none bg-red-600/10 hover:bg-red-600/20 text-red-500 border border-red-600/30 px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition">
+                        <i class="fa-brands fa-youtube text-base"></i>
+                        <span>YouTube</span>
+                    </a>
+                    <a id="linkDiscord" href="https://discord.gg" target="_blank" class="flex-1 md:flex-none bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition">
+                        <i class="fa-brands fa-discord text-base"></i>
+                        <span>Discord</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Admin Notice Bar -->
+            <div class="admin-only mt-6 pt-4 border-t border-twitch-border/60 flex flex-wrap items-center justify-between gap-4 text-xs text-gray-400">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-circle-info text-twitch-neon"></i>
+                    <span>Mode Édition actif : Cliquez sur un jour pour ajouter un créneau ou modifier un cours.</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="clearAllSchedules()" class="text-red-400 hover:text-red-300 font-medium transition">
+                        <i class="fa-solid fa-trash-can mr-1"></i> Réinitialiser la semaine
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Weekly Schedule Grid -->
+        <div id="scheduleGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-4">
+            <!-- Dynamic Days Column Containers generated via JavaScript -->
+        </div>
+
+    </main>
+
+    <!-- Modal: Add / Edit Stream Event -->
+    <div id="eventModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-twitch-dark border border-twitch-border w-full max-w-md rounded-2xl p-6 shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between pb-4 border-b border-twitch-border">
+                <h3 id="modalTitle" class="font-bold text-lg text-white flex items-center gap-2">
+                    <i class="fa-solid fa-calendar-plus text-twitch-neon"></i>
+                    <span>Programmer un Stream</span>
+                </h3>
+                <button onclick="closeEventModal()" class="text-gray-400 hover:text-white transition">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <!-- Modal Form -->
+            <form id="eventForm" onsubmit="saveEvent(event)" class="mt-4 space-y-4">
+                <input type="hidden" id="eventId">
+                
+                <!-- Day Select -->
+                <div>
+                    <label class="block text-xs font-semibold text-gray-300 uppercase mb-1">Jour de la semaine</label>
+                    <select id="eventDay" required class="w-full bg-twitch-bg border border-twitch-border rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-twitch">
+                        <option value="Lundi">Lundi</option>
+                        <option value="Mardi">Mardi</option>
+                        <option value="Mercredi">Mercredi</option>
+                        <option value="Jeudi">Jeudi</option>
+                        <option value="Vendredi">Vendredi</option>
+                        <option value="Samedi">Samedi</option>
+                        <option value="Dimanche">Dimanche</option>
+                    </select>
+                </div>
+
+                <!-- Hours Input -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-300 uppercase mb-1">Heure de début</label>
+                        <input type="time" id="eventStartTime" required class="w-full bg-twitch-bg border border-twitch-border rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-twitch">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-300 uppercase mb-1">Heure de fin</label>
+                        <input type="time" id="eventEndTime" required class="w-full bg-twitch-bg border border-twitch-border rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-twitch">
+                    </div>
+                </div>
+
+                <!-- Game / Category Selection with Dropdown -->
+                <div>
+                    <label class="block text-xs font-semibold text-gray-300 uppercase mb-1">Jeu / Catégorie</label>
+                    <select id="eventGameSelect" onchange="toggleCustomGameInput()" class="w-full bg-twitch-bg border border-twitch-border rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-twitch">
+                        <option value="Just Chatting">💬 Just Chatting</option>
+                        <option value="League of Legends">⚔️ League of Legends</option>
+                        <option value="Valorant">🎯 Valorant</option>
+                        <option value="Dota 2">🛡️ Dota 2</option>
+                        <option value="Counter-Strike 2">💥 Counter-Strike 2</option>
+                        <option value="World of Warcraft">🐉 World of Warcraft</option>
+                        <option value="GTA V / RP">🚗 GTA V / RP</option>
+                        <option value="Apex Legends">🏆 Apex Legends</option>
+                        <option value="Minecraft">⛏️ Minecraft</option>
+                        <option value="Fortnite">🪂 Fortnite</option>
+                        <option value="Assassin's Creed">🗡️ Assassin's Creed</option>
+                        <option value="Rétrogaming">🕹️ Rétrogaming</option>
+                        <option value="__CUSTOM__">➕ Autre jeu (Saisir manuellement)...</option>
+                    </select>
+                </div>
+
+                <!-- Custom Game Name Input (Hidden by default) -->
+                <div id="customGameContainer" class="hidden">
+                    <label class="block text-xs font-semibold text-twitch-neon uppercase mb-1">Saisir le nom du jeu</label>
+                    <input type="text" id="eventCustomGame" placeholder="Ex: Elden Ring, Dead by Daylight..." class="w-full bg-twitch-bg border border-twitch-border rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-twitch">
+                </div>
+
+                <!-- Stream Title / Topic -->
+                <div>
+                    <label class="block text-xs font-semibold text-gray-300 uppercase mb-1">Titre du Stream / Programme</label>
+                    <input type="text" id="eventTitle" placeholder="Ex: Tryhard Ranked, Soirée communautaire..." required class="w-full bg-twitch-bg border border-twitch-border rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-twitch">
+                </div>
+
+                <!-- Status Badge -->
+                <div>
+                    <label class="block text-xs font-semibold text-gray-300 uppercase mb-1">Statut</label>
+                    <select id="eventStatus" class="w-full bg-twitch-bg border border-twitch-border rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-twitch">
+                        <option value="Programmé">📅 Programmé</option>
+                        <option value="En Direct">🔴 EN DIRECT</option>
+                        <option value="Annulé">❌ Annulé / Off</option>
+                    </select>
+                </div>
+
+                <!-- Submit & Delete Buttons -->
+                <div class="pt-3 flex items-center gap-2">
+                    <button type="submit" class="flex-1 bg-twitch hover:bg-twitch-hover text-white font-bold py-2.5 rounded-xl text-sm shadow-twitch-glow transition">
+                        Enregistrer
+                    </button>
+                    <button type="button" id="btnDeleteEvent" onclick="deleteCurrentEvent()" class="hidden bg-red-600/20 hover:bg-red-600/40 text-red-400 border border-red-500/30 font-bold px-4 py-2.5 rounded-xl text-sm transition">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Streamer Profile Settings -->
+    <div id="profileModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-twitch-dark border border-twitch-border w-full max-w-md rounded-2xl p-6 shadow-2xl relative">
+            <div class="flex items-center justify-between pb-4 border-b border-twitch-border">
+                <h3 class="font-bold text-lg text-white flex items-center gap-2">
+                    <i class="fa-solid fa-user-gear text-twitch-neon"></i>
+                    <span>Paramètres de la Chaîne</span>
+                </h3>
+                <button onclick="closeProfileModal()" class="text-gray-400 hover:text-white transition">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <form onsubmit="saveProfile(event)" class="mt-4 space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-300 uppercase mb-1">Nom du Streamer / Chaîne</label>
+                    <input type="text" id="inputChannelName" required class="w-full bg-twitch-bg border border-twitch-border rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-twitch">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-gray-300 uppercase mb-1">Bio / Slogan court</label>
+                    <textarea id="inputChannelBio" rows="2" class="w-full bg-twitch-bg border border-twitch-border rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-twitch"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-gray-300 uppercase mb-1">URL Avatar (Image)</label>
+                    <input type="url" id="inputChannelAvatar" class="w-full bg-twitch-bg border border-twitch-border rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-twitch">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-gray-300 uppercase mb-1">Lien Twitch</label>
+                    <input type="url" id="inputTwitch" class="w-full bg-twitch-bg border border-twitch-border rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-twitch">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-gray-300 uppercase mb-1">Lien YouTube</label>
+                    <input type="url" id="inputYoutube" class="w-full bg-twitch-bg border border-twitch-border rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-twitch">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-gray-300 uppercase mb-1">Lien Discord</label>
+                    <input type="url" id="inputDiscord" class="w-full bg-twitch-bg border border-twitch-border rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-twitch">
+                </div>
+
+                <div class="pt-2">
+                    <button type="submit" class="w-full bg-twitch hover:bg-twitch-hover text-white font-bold py-2.5 rounded-xl text-sm shadow-twitch-glow transition">
+                        Mettre à jour
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="border-t border-twitch-border py-6 bg-twitch-dark mt-auto">
+        <div class="max-w-7xl mx-auto px-4 text-center text-xs text-gray-400 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <p>© 2026 Stream Schedule Manager — Développé pour les streamers</p>
+            <div class="flex items-center gap-4">
+                <span class="text-gray-400">Sauvegarde automatique active</span>
+                <span class="w-2 h-2 rounded-full bg-green-500"></span>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Days list constant
+        const DAYS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+
+        // Default initial data
+        const DEFAULT_SCHEDULE = [
+            {
+                id: '1',
+                day: 'Lundi',
+                startTime: '20:00',
+                endTime: '23:00',
+                game: 'Just Chatting',
+                title: 'Débrief du week-end & Chill',
+                status: 'Programmé'
+            },
+            {
+                id: '2',
+                day: 'Mercredi',
+                startTime: '14:00',
+                endTime: '18:00',
+                game: 'League of Legends',
+                title: 'Ranked Road to Master avec les subs',
+                status: 'Programmé'
+            },
+            {
+                id: '3',
+                day: 'Vendredi',
+                startTime: '21:00',
+                endTime: '00:30',
+                game: 'Valorant',
+                title: 'Grosse soirée Tryhard Duo avec Invités',
+                status: 'En Direct'
+            },
+            {
+                id: '4',
+                day: 'Samedi',
+                startTime: '20:30',
+                endTime: '23:30',
+                game: 'GTA V / RP',
+                title: 'Session RP - Nouvel épisode',
+                status: 'Programmé'
+            }
+        ];
+
+        const DEFAULT_PROFILE = {
+            name: 'Alex_Stream',
+            bio: 'Streamer passionné 🎮 | Directs tous les Lundi, Mercredi et Vendredi dès 20h !',
+            avatar: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=150&auto=format&fit=crop&q=80',
+            twitch: 'https://twitch.tv',
+            youtube: 'https://youtube.com',
+            discord: 'https://discord.gg'
+        };
+
+        // Application State Variables
+        let scheduleData = [];
+        let profileData = {};
+        let currentMode = 'admin'; // 'admin' or 'public'
+
+        // Load Application Data on Init
+        window.addEventListener('DOMContentLoaded', () => {
+            loadStoredData();
+            renderProfile();
+            renderSchedule();
+        });
+
+        // Load data from LocalStorage or Fallback
+        function loadStoredData() {
+            const savedSchedule = localStorage.getItem('stream_schedule_events');
+            const savedProfile = localStorage.getItem('stream_schedule_profile');
+
+            scheduleData = savedSchedule ? JSON.parse(savedSchedule) : DEFAULT_SCHEDULE;
+            profileData = savedProfile ? JSON.parse(savedProfile) : DEFAULT_PROFILE;
+        }
+
+        function saveData() {
+            localStorage.setItem('stream_schedule_events', JSON.stringify(scheduleData));
+            localStorage.setItem('stream_schedule_profile', JSON.stringify(profileData));
+        }
+
+        // Render Streamer Profile Info
+        function renderProfile() {
+            document.getElementById('channelNameDisplay').textContent = profileData.name || 'Streamer';
+            document.getElementById('channelBioDisplay').textContent = profileData.bio || '';
+            document.getElementById('channelAvatar').src = profileData.avatar || DEFAULT_PROFILE.avatar;
+            document.getElementById('linkTwitch').href = profileData.twitch || '#';
+            document.getElementById('linkYoutube').href = profileData.youtube || '#';
+            document.getElementById('linkDiscord').href = profileData.discord || '#';
+        }
+
+        // Render Schedule Columns & Events
+        function renderSchedule() {
+            const gridContainer = document.getElementById('scheduleGrid');
+            gridContainer.innerHTML = '';
+
+            DAYS.forEach(day => {
+                // Filter events for this specific day & sort by start time
+                const dayEvents = scheduleData
+                    .filter(event => event.day === day)
+                    .sort((a, b) => a.startTime.localeCompare(b.startTime));
+
+                // Create Day Column HTML Element
+                const dayColumn = document.createElement('div');
+                dayColumn.className = 'bg-twitch-dark border border-twitch-border rounded-2xl flex flex-col overflow-hidden shadow-md';
+
+                // Day Column Header
+                let dayHeaderHtml = `
+                    <div class="bg-twitch-card border-b border-twitch-border p-3 flex items-center justify-between">
+                        <span class="font-bold text-sm text-white uppercase tracking-wider">${day}</span>
+                        <button onclick="openEventModal('${day}')" class="admin-only w-7 h-7 rounded-lg bg-twitch/20 hover:bg-twitch text-twitch-neon hover:text-white flex items-center justify-center transition text-xs">
+                            <i class="fa-solid fa-plus"></i>
+                        </button>
+                    </div>
+                `;
+
+                // Day Column Body (Events list)
+                let eventsHtml = `<div class="p-2.5 flex-1 space-y-2.5 min-h-[160px]">`;
+
+                if (dayEvents.length === 0) {
+                    eventsHtml += `
+                        <div class="h-full flex flex-col items-center justify-center p-4 text-center border-2 border-dashed border-twitch-border/40 rounded-xl">
+                            <i class="fa-solid fa-moon text-gray-600 text-lg mb-1"></i>
+                            <span class="text-xs text-gray-400 font-medium">Pas de live</span>
+                        </div>
+                    `;
+                } else {
+                    dayEvents.forEach(event => {
+                        let statusBadge = '';
+                        if (event.status === 'En Direct') {
+                            statusBadge = `<span class="bg-red-600 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full shadow-live-glow uppercase tracking-wider animate-pulse">🔴 Live</span>`;
+                        } else if (event.status === 'Annulé') {
+                            statusBadge = `<span class="bg-gray-700 text-gray-300 text-[10px] font-bold px-2 py-0.5 rounded-full">OFF</span>`;
+                        } else {
+                            statusBadge = `<span class="bg-twitch-border text-twitch-neon text-[10px] font-bold px-2 py-0.5 rounded-full">PLAN</span>`;
+                        }
+
+                        eventsHtml += `
+                            <div onclick="editEvent('${event.id}')" class="bg-twitch-bg border border-twitch-border p-3 rounded-xl card-hover-effect cursor-pointer relative group">
+                                <div class="flex items-center justify-between mb-1">
+                                    <span class="text-xs font-bold text-twitch-neon flex items-center gap-1">
+                                        <i class="fa-regular fa-clock text-[10px]"></i> ${event.startTime} - ${event.endTime}
+                                    </span>
+                                    ${statusBadge}
+                                </div>
+                                <div class="font-semibold text-sm text-white line-clamp-1 mb-1">${event.title}</div>
+                                <div class="inline-block bg-twitch-card border border-twitch-border px-2 py-1 rounded-lg text-xs font-medium text-gray-300">
+                                    🎮 ${event.game}
+                                </div>
+                            </div>
+                        `;
+                    });
+                }
+
+                eventsHtml += `</div>`;
+                dayColumn.innerHTML = dayHeaderHtml + eventsHtml;
+                gridContainer.appendChild(dayColumn);
+            });
+        }
+
+        // Switch between Admin Mode and Public View Mode
+        function setMode(mode) {
+            currentMode = mode;
+            const btnAdmin = document.getElementById('btnModeAdmin');
+            const btnPublic = document.getElementById('btnModePublic');
+
+            if (mode === 'admin') {
+                document.body.classList.remove('public-mode');
+                btnAdmin.className = 'px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-all bg-twitch text-white shadow-sm';
+                btnPublic.className = 'px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-all text-gray-400 hover:text-white';
+            } else {
+                document.body.classList.add('public-mode');
+                btnPublic.className = 'px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-all bg-twitch text-white shadow-sm';
+                btnAdmin.className = 'px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-all text-gray-400 hover:text-white';
+            }
+        }
+
+        // Toggle custom game input text box if "Autre" option selected
+        function toggleCustomGameInput() {
+            const select = document.getElementById('eventGameSelect');
+            const customContainer = document.getElementById('customGameContainer');
+            const customInput = document.getElementById('eventCustomGame');
+
+            if (select.value === '__CUSTOM__') {
+                customContainer.classList.remove('hidden');
+                customInput.required = true;
+            } else {
+                customContainer.classList.add('hidden');
+                customInput.required = false;
+            }
+        }
+
+        // Modal Operations (Add/Edit Events)
+        function openEventModal(day = 'Lundi') {
+            if (currentMode === 'public') return; // Disable modal in public view mode
+
+            document.getElementById('eventForm').reset();
+            document.getElementById('eventId').value = '';
+            document.getElementById('eventDay').value = day;
+            document.getElementById('modalTitle').innerHTML = `<i class="fa-solid fa-calendar-plus text-twitch-neon"></i><span>Ajouter un Live (${day})</span>`;
+            document.getElementById('btnDeleteEvent').classList.add('hidden');
+            
+            toggleCustomGameInput();
+            document.getElementById('eventModal').classList.remove('hidden');
+        }
+
+        function closeEventModal() {
+            document.getElementById('eventModal').classList.add('hidden');
+        }
+
+        function editEvent(id) {
+            if (currentMode === 'public') return; // Edit restricted in public mode
+
+            const event = scheduleData.find(item => item.id === id);
+            if (!event) return;
+
+            document.getElementById('eventId').value = event.id;
+            document.getElementById('eventDay').value = event.day;
+            document.getElementById('eventStartTime').value = event.startTime;
+            document.getElementById('eventEndTime').value = event.endTime;
+            document.getElementById('eventTitle').value = event.title;
+            document.getElementById('eventStatus').value = event.status || 'Programmé';
+
+            const gameSelect = document.getElementById('eventGameSelect');
+            const options = Array.from(gameSelect.options).map(opt => opt.value);
+
+            if (options.includes(event.game)) {
+                gameSelect.value = event.game;
+                document.getElementById('customGameContainer').classList.add('hidden');
+            } else {
+                gameSelect.value = '__CUSTOM__';
+                document.getElementById('eventCustomGame').value = event.game;
+                document.getElementById('customGameContainer').classList.remove('hidden');
+            }
+
+            document.getElementById('modalTitle').innerHTML = `<i class="fa-solid fa-pen text-twitch-neon"></i><span>Modifier le Live</span>`;
+            document.getElementById('btnDeleteEvent').classList.remove('hidden');
+            document.getElementById('eventModal').classList.remove('hidden');
+        }
+
+        function saveEvent(e) {
+            e.preventDefault();
+
+            const id = document.getElementById('eventId').value;
+            const day = document.getElementById('eventDay').value;
+            const startTime = document.getElementById('eventStartTime').value;
+            const endTime = document.getElementById('eventEndTime').value;
+            const title = document.getElementById('eventTitle').value;
+            const status = document.getElementById('eventStatus').value;
+
+            const gameSelect = document.getElementById('eventGameSelect').value;
+            let game = gameSelect;
+            if (gameSelect === '__CUSTOM__') {
+                game = document.getElementById('eventCustomGame').value.trim() || 'Jeu Inconnu';
+            }
+
+            if (id) {
+                // Update existing event
+                const index = scheduleData.findIndex(item => item.id === id);
+                if (index !== -1) {
+                    scheduleData[index] = { id, day, startTime, endTime, game, title, status };
+                }
+            } else {
+                // Create new event
+                const newEvent = {
+                    id: Date.now().toString(),
+                    day,
+                    startTime,
+                    endTime,
+                    game,
+                    title,
+                    status
+                };
+                scheduleData.push(newEvent);
+            }
+
+            saveData();
+            renderSchedule();
+            closeEventModal();
+        }
+
+        function deleteCurrentEvent() {
+            const id = document.getElementById('eventId').value;
+            if (!id) return;
+
+            scheduleData = scheduleData.filter(item => item.id !== id);
+            saveData();
+            renderSchedule();
+            closeEventModal();
+        }
+
+        function clearAllSchedules() {
+            if (confirm('Es-tu sûr de vouloir vider tout le planning de la semaine ?')) {
+                scheduleData = [];
+                saveData();
+                renderSchedule();
+            }
+        }
+
+        // Profile Modal Logic
+        function openProfileModal() {
+            document.getElementById('inputChannelName').value = profileData.name || '';
+            document.getElementById('inputChannelBio').value = profileData.bio || '';
+            document.getElementById('inputChannelAvatar').value = profileData.avatar || '';
+            document.getElementById('inputTwitch').value = profileData.twitch || '';
+            document.getElementById('inputYoutube').value = profileData.youtube || '';
+            document.getElementById('inputDiscord').value = profileData.discord || '';
+
+            document.getElementById('profileModal').classList.remove('hidden');
+        }
+
+        function closeProfileModal() {
+            document.getElementById('profileModal').classList.add('hidden');
+        }
+
+        function saveProfile(e) {
+            e.preventDefault();
+
+            profileData = {
+                name: document.getElementById('inputChannelName').value,
+                bio: document.getElementById('inputChannelBio').value,
+                avatar: document.getElementById('inputChannelAvatar').value,
+                twitch: document.getElementById('inputTwitch').value,
+                youtube: document.getElementById('inputYoutube').value,
+                discord: document.getElementById('inputDiscord').value
+            };
+
+            saveData();
+            renderProfile();
+            closeProfileModal();
+        }
+
+        // Export Schedule as image PNG
+        function exportScheduleAsImage() {
+            const targetElement = document.querySelector('main');
+            
+            // Switch to public mode temporarily for clean capture
+            const previousMode = currentMode;
+            setMode('public');
+
+            html2canvas(targetElement, {
+                backgroundColor: '#0E0E10',
+                scale: 2, // High DPI resolution
+                useCORS: true
+            }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = `Planning-Stream-${profileData.name || 'Stream'}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+
+                // Restore previous mode
+                setMode(previousMode);
+            }).catch(err => {
+                console.error("Erreur lors de la capture d'écran:", err);
+                setMode(previousMode);
+            });
+        }
+    </script>
+</body>
+</html>
