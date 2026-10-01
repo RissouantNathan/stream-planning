@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Planning de Stream</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- FontAwesome pour les icônes -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+  <!-- Header principal avec canaux & admin -->
+  <header class="app-header">
+    <div class="brand">
+      <i class="fa-solid fa-gamepad logo-icon"></i>
+      <div>
+        <h1>Planning Stream</h1>
+        <span class="live-badge" id="today-summary"><i class="fa-solid fa-circle"></i> En direct aujourd'hui</span>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <!-- Réseaux sociaux -->
+      <div class="social-links">
+        <a href="https://twitch.tv/Kouyabor" target="_blank" class="social-btn twitch"><i class="fa-brands fa-twitch"></i> <span>Twitch</span></a>
+        <a href="https://youtube.com/@Kouyabor" target="_blank" class="social-btn youtube"><i class="fa-brands fa-youtube"></i> <span>YouTube</span></a>
+        <a href="https://discord.com/invite/FaazZqw5Xe" target="_blank" class="social-btn discord"><i class="fa-brands fa-discord"></i> <span>Discord</span></a>
+      </div>
+
+      <!-- Sécurité Admin -->
+      <button id="admin-toggle-btn" class="admin-btn">
+        <i class="fa-solid fa-lock"></i> <span id="admin-btn-text">Mode Édition</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Conteneur principal (Plein écran responsive) -->
+  <main class="main-container">
+
+    <!-- Modal d'authentification PIN -->
+    <div id="pin-modal" class="modal hidden">
+      <div class="modal-content">
+        <h3><i class="fa-solid fa-shield-halved"></i> Accès Administrateur</h3>
+        <p>Saisis ton code PIN pour déverrouiller la modification :</p>
+        <input type="password" id="pin-input" placeholder="Code PIN (ex: 1234)" maxlength="8">
+        <div class="modal-actions">
+          <button id="pin-cancel" class="btn-secondary">Annuler</button>
+          <button id="pin-submit" class="btn-primary">Valider</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Barre d'outils Admin (masquée aux viewers) -->
+    <div id="admin-bar" class="admin-bar hidden">
+      <div class="admin-info">
+        <i class="fa-solid fa-pen-to-square"></i> Vous êtes en <strong>Mode Édition</strong>.
+      </div>
+      <div class="admin-controls">
+        <button id="change-pin-btn" class="btn-sm"><i class="fa-solid fa-key"></i> Changer le PIN</button>
+        <button id="reset-default-btn" class="btn-sm danger"><i class="fa-solid fa-rotate-left"></i> Réinitialiser</button>
+      </div>
+    </div>
+
+    <!-- Grille Responsive des 7 jours -->
+    <section class="schedule-grid" id="schedule-grid">
+      <!-- Les cartes des jours sont générées dynamiquement par app.js -->
+    </section>
+
+  </main>
+
+  <!-- Modal d'Édition d'un créneau -->
+  <div id="edit-modal" class="modal hidden">
+    <div class="modal-content large">
+      <h3 id="edit-modal-title"><i class="fa-solid fa-calendar-plus"></i> Modifier le créneau</h3>
+      
+      <form id="edit-form">
+        <input type="hidden" id="edit-day-index">
+
+        <div class="form-group">
+          <label for="edit-game-select">Choisir un jeu / catégorie :</label>
+          <select id="edit-game-select">
+            <option value="Just Chatting|https://static-cdn.jtvnw.net/ttv-boxart/509658-285x380.jpg">Just Chatting</option>
+            <option value="Dota 2|https://static-cdn.jtvnw.net/ttv-boxart/29595-285x380.jpg">Dota 2</option>
+            <option value="League of Legends|https://static-cdn.jtvnw.net/ttv-boxart/21779-285x380.jpg">League of Legends</option>
+            <option value="Valorant|https://static-cdn.jtvnw.net/ttv-boxart/516575-285x380.jpg">Valorant</option>
+            <option value="Minecraft|https://static-cdn.jtvnw.net/ttv-boxart/27471_IGDB-285x380.jpg">Minecraft</option>
+            <option value="Grand Theft Auto V|https://static-cdn.jtvnw.net/ttv-boxart/32982_IGDB-285x380.jpg">GTA V</option>
+            <option value="Elden Ring|https://static-cdn.jtvnw.net/ttv-boxart/512953_IGDB-285x380.jpg">Elden Ring</option>
+            <option value="Counter-Strike 2|https://static-cdn.jtvnw.net/ttv-boxart/32399_IGDB-285x380.jpg">Counter-Strike 2</option>
+            <option value="Apex Legends|https://static-cdn.jtvnw.net/ttv-boxart/511224-285x380.jpg">Apex Legends</option>
+            <option value="World of Warcraft|https://static-cdn.jtvnw.net/ttv-boxart/18122-285x380.jpg">World of Warcraft</option>
+            <option value="OFF">Pas de stream (OFF)</option>
+            <option value="CUSTOM">-- Autre jeu personnalisé --</option>
+          </select>
+        </div>
+
+        <div id="custom-game-fields" class="hidden">
+          <div class="form-group">
+            <label for="edit-custom-title">Nom du jeu personnalisé :</label>
+            <input type="text" id="edit-custom-title" placeholder="Ex: Hades II">
+          </div>
+          <div class="form-group">
+            <label for="edit-custom-img">URL de l'image / Jacquette (optionnel) :</label>
+            <input type="url" id="edit-custom-img" placeholder="https://exemple.com/image.jpg">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="edit-time">Horaire :</label>
+            <input type="text" id="edit-time" placeholder="ex: 20h00 - 23h30">
+          </div>
+          <div class="form-group">
+            <label for="edit-desc">Description / Détails :</label>
+            <input type="text" id="edit-desc" placeholder="ex: Ranked avec les subs !">
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" id="edit-cancel" class="btn-secondary">Annuler</button>
+          <button type="submit" class="btn-primary">Enregistrer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
