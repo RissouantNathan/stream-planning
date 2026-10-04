@@ -42,7 +42,6 @@ onSnapshot(scheduleDocRef, (docSnap) => {
   if (docSnap.exists()) {
     schedule = docSnap.data().days || DEFAULT_SCHEDULE;
   } else {
-    // Si la collection n'existe pas encore, on la crée avec le planning par défaut
     setDoc(scheduleDocRef, { days: DEFAULT_SCHEDULE });
   }
   renderSchedule();
@@ -96,7 +95,7 @@ function renderSchedule() {
     grid.appendChild(card);
   });
 
-  // Reconnecter les évènements pour les boutons d'édition
+  // Écouteurs dynamiques pour les boutons d'édition
   document.querySelectorAll('.card-edit-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       const idx = e.currentTarget.getAttribute('data-index');
@@ -143,12 +142,12 @@ function updateAdminUI() {
   const btnText = document.getElementById('admin-btn-text');
   if (isAdmin) {
     adminBtn.classList.add('active');
-    btnText.innerText = 'Quitter Édition';
-    adminBar.classList.remove('hidden');
+    if (btnText) btnText.innerText = 'Quitter Édition';
+    if (adminBar) adminBar.classList.remove('hidden');
   } else {
     adminBtn.classList.remove('active');
-    btnText.innerText = 'Mode Édition';
-    adminBar.classList.add('hidden');
+    if (btnText) btnText.innerText = 'Mode Édition';
+    if (adminBar) adminBar.classList.add('hidden');
   }
   renderSchedule();
 }
@@ -166,31 +165,34 @@ function openEditModal(index) {
   document.getElementById('edit-desc').value = item.desc || '';
 
   let matchFound = false;
-  for (let option of gameSelect.options) {
-    if (option.value.startsWith(item.game + '|')) {
-      gameSelect.value = option.value;
-      matchFound = true;
-      break;
+  if (gameSelect) {
+    for (let option of gameSelect.options) {
+      if (option.value.startsWith(item.game + '|')) {
+        gameSelect.value = option.value;
+        matchFound = true;
+        break;
+      }
     }
-  }
 
-  if (!matchFound) {
-    if (item.game === 'OFF') {
-      gameSelect.value = 'OFF';
-    } else {
-      gameSelect.value = 'CUSTOM';
-      document.getElementById('edit-custom-title').value = item.game;
-      document.getElementById('edit-custom-img').value = item.img;
+    if (!matchFound) {
+      if (item.game === 'OFF') {
+        gameSelect.value = 'OFF';
+      } else {
+        gameSelect.value = 'CUSTOM';
+        document.getElementById('edit-custom-title').value = item.game;
+        document.getElementById('edit-custom-img').value = item.img;
+      }
     }
   }
 
   toggleCustomFields();
-  editModal.classList.remove('hidden');
+  if (editModal) editModal.classList.remove('hidden');
 }
 
 gameSelect?.addEventListener('change', toggleCustomFields);
 
 function toggleCustomFields() {
+  if (!gameSelect || !customFields) return;
   if (gameSelect.value === 'CUSTOM') {
     customFields.classList.remove('hidden');
   } else {
@@ -199,13 +201,13 @@ function toggleCustomFields() {
 }
 
 document.getElementById('edit-cancel')?.addEventListener('click', () => {
-  editModal.classList.add('hidden');
+  if (editModal) editModal.classList.add('hidden');
 });
 
 document.getElementById('edit-form')?.addEventListener('submit', async (e) => {
   e.preventDefault();
   const idx = document.getElementById('edit-day-index').value;
-  const selectValue = gameSelect.value;
+  const selectValue = gameSelect ? gameSelect.value : 'OFF';
   let gameTitle = '', gameImg = '';
 
   if (selectValue === 'OFF') {
@@ -228,13 +230,12 @@ document.getElementById('edit-form')?.addEventListener('submit', async (e) => {
     desc: document.getElementById('edit-desc').value
   };
 
-  // Synchronisation synchrone vers Firestore
   try {
     await setDoc(scheduleDocRef, { days: schedule });
-    editModal.classList.add('hidden');
+    if (editModal) editModal.classList.add('hidden');
   } catch (err) {
-    console.error("Erreur lors de la sauvegarde :", err);
-    alert("Erreur de sauvegarde. Vérifie la configuration des règles Firestore.");
+    console.error("Erreur de sauvegarde :", err);
+    alert("Erreur lors de la mise à jour sur Firebase.");
   }
 });
 
