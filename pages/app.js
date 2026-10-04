@@ -1,33 +1,20 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 // --- CONFIGURATION FIREBASE ---
-// Remplace ces valeurs par celles de ta console Firebase
-<script type="module">
-  // Import the functions you need from the SDKs you need
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
-  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-analytics.js";
-  // TODO: Add SDKs for Firebase products that you want to use
-  // https://firebase.google.com/docs/web/setup#available-libraries
+const firebaseConfig = {
+  apiKey: "AIzaSyAbEUGxn_r1nFX5qL9HHDVYcE17KbF2taQ",
+  authDomain: "planning-stream.firebaseapp.com",
+  projectId: "planning-stream",
+  storageBucket: "planning-stream.firebasestorage.app",
+  messagingSenderId: "773016135585",
+  appId: "1:773016135585:web:55a4d4a2f201e298db8de0",
+  measurementId: "G-6TH1L23MMT"
+};
 
-  // Your web app's Firebase configuration
-  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-  const firebaseConfig = {
-    apiKey: "AIzaSyAbEUGxn_r1nFX5qL9HHDVYcE17KbF2taQ",
-    authDomain: "planning-stream.firebaseapp.com",
-    projectId: "planning-stream",
-    storageBucket: "planning-stream.firebasestorage.app",
-    messagingSenderId: "773016135585",
-    appId: "1:773016135585:web:55a4d4a2f201e298db8de0",
-    measurementId: "G-6TH1L23MMT"
-  };
-
-  // Initialize Firebase
-  const app = initializeApp(firebaseConfig);
-  const analytics = getAnalytics(app);
-  const scheduleDocRef = doc(db, "stream", "planning");
-</script>
-
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const scheduleDocRef = doc(db, "stream", "planning");
 
 // --- DONNÉES PAR DÉFAUT ---
 const DEFAULT_SCHEDULE = [
@@ -44,7 +31,7 @@ let schedule = [...DEFAULT_SCHEDULE];
 let adminPin = localStorage.getItem('stream_pin') || '1234';
 let isAdmin = false;
 
-// DÉTECTION DU JOUR
+// DÉTECTION DU JOUR ACTUEL
 function getTodayIndex() {
   const day = new Date().getDay();
   return day === 0 ? 6 : day - 1;
@@ -55,13 +42,13 @@ onSnapshot(scheduleDocRef, (docSnap) => {
   if (docSnap.exists()) {
     schedule = docSnap.data().days || DEFAULT_SCHEDULE;
   } else {
-    // Si le document n'existe pas encore, on l'initialise
+    // Si la collection n'existe pas encore, on la crée avec le planning par défaut
     setDoc(scheduleDocRef, { days: DEFAULT_SCHEDULE });
   }
   renderSchedule();
 });
 
-// RENDU DU PLANNING
+// RENDU DU PLANNING DANS LE DOM
 function renderSchedule() {
   const grid = document.getElementById('schedule-grid');
   if (!grid) return;
@@ -109,7 +96,7 @@ function renderSchedule() {
     grid.appendChild(card);
   });
 
-  // Reconnecter les évènements de modification
+  // Reconnecter les évènements pour les boutons d'édition
   document.querySelectorAll('.card-edit-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       const idx = e.currentTarget.getAttribute('data-index');
@@ -118,7 +105,7 @@ function renderSchedule() {
   });
 }
 
-// GESTION DU MODE ADMIN
+// GESTION DU MODE ADMIN (MODALE PIN)
 const adminBtn = document.getElementById('admin-toggle-btn');
 const pinModal = document.getElementById('pin-modal');
 const adminBar = document.getElementById('admin-bar');
@@ -166,7 +153,7 @@ function updateAdminUI() {
   renderSchedule();
 }
 
-// MODIFICATION & SAUVEGARDE SUR FIREBASE
+// MODAL ÉDITION DE CRÉNEAU
 const editModal = document.getElementById('edit-modal');
 const gameSelect = document.getElementById('edit-game-select');
 const customFields = document.getElementById('custom-game-fields');
@@ -241,17 +228,17 @@ document.getElementById('edit-form')?.addEventListener('submit', async (e) => {
     desc: document.getElementById('edit-desc').value
   };
 
-  // Envoi des modifications sur Firebase
+  // Synchronisation synchrone vers Firestore
   try {
     await setDoc(scheduleDocRef, { days: schedule });
     editModal.classList.add('hidden');
   } catch (err) {
     console.error("Erreur lors de la sauvegarde :", err);
-    alert("Erreur lors de la sauvegarde sur la base de données.");
+    alert("Erreur de sauvegarde. Vérifie la configuration des règles Firestore.");
   }
 });
 
-// AUTRES ACTIONS ADMIN
+// ACTIONS ADMIN
 document.getElementById('change-pin-btn')?.addEventListener('click', () => {
   const newPin = prompt("Entre ton nouveau code PIN :");
   if (newPin) {
