@@ -31,7 +31,7 @@ let schedule = [...DEFAULT_SCHEDULE];
 let adminPin = localStorage.getItem('stream_pin') || '1234';
 let isAdmin = false;
 
-// DÉTECTION DU JOUR ACTUEL
+// DÉTECTION DU JOUR ACTUEL (Dimanche=0 -> 6, Lundi=1 -> 0, etc.)
 function getTodayIndex() {
   const day = new Date().getDay();
   return day === 0 ? 6 : day - 1;
@@ -88,77 +88,20 @@ function renderSchedule() {
           ${item.desc ? `<div class="stream-desc">${item.desc}</div>` : ''}
         </div>
 
-        ${isAdmin ? `<button class="card-edit-btn" data-index="${index}"><i class="fa-solid fa-pen"></i> Modifier</button>` : ''}
+        ${isAdmin ? `<button class="card-edit-btn" onclick="openEditModal(${index})"><i class="fa-solid fa-pen"></i> Modifier</button>` : ''}
       </div>
     `;
 
     grid.appendChild(card);
   });
-
-  // Écouteurs dynamiques pour les boutons d'édition
-  document.querySelectorAll('.card-edit-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      const idx = e.currentTarget.getAttribute('data-index');
-      openEditModal(idx);
-    });
-  });
 }
 
-// GESTION DU MODE ADMIN (MODALE PIN)
-const adminBtn = document.getElementById('admin-toggle-btn');
-const pinModal = document.getElementById('pin-modal');
-const adminBar = document.getElementById('admin-bar');
-
-if (adminBtn) {
-  adminBtn.addEventListener('click', () => {
-    if (isAdmin) {
-      isAdmin = false;
-      updateAdminUI();
-    } else {
-      pinModal.classList.remove('hidden');
-      document.getElementById('pin-input').focus();
-    }
-  });
-}
-
-document.getElementById('pin-cancel')?.addEventListener('click', () => {
-  pinModal.classList.add('hidden');
-});
-
-document.getElementById('pin-submit')?.addEventListener('click', () => {
-  const pinInput = document.getElementById('pin-input');
-  if (pinInput.value === adminPin) {
-    isAdmin = true;
-    pinModal.classList.add('hidden');
-    pinInput.value = '';
-    updateAdminUI();
-  } else {
-    alert('Code PIN incorrect.');
-    pinInput.value = '';
-  }
-});
-
-function updateAdminUI() {
-  const btnText = document.getElementById('admin-btn-text');
-  if (isAdmin) {
-    adminBtn.classList.add('active');
-    if (btnText) btnText.innerText = 'Quitter Édition';
-    if (adminBar) adminBar.classList.remove('hidden');
-  } else {
-    adminBtn.classList.remove('active');
-    if (btnText) btnText.innerText = 'Mode Édition';
-    if (adminBar) adminBar.classList.add('hidden');
-  }
-  renderSchedule();
-}
-
-// MODAL ÉDITION DE CRÉNEAU
-const editModal = document.getElementById('edit-modal');
-const gameSelect = document.getElementById('edit-game-select');
-const customFields = document.getElementById('custom-game-fields');
-
+// --- MODAL ÉDITION DE CRÉNEAU ---
 function openEditModal(index) {
+  const editModal = document.getElementById('edit-modal');
+  const gameSelect = document.getElementById('edit-game-select');
   const item = schedule[index];
+
   document.getElementById('edit-day-index').value = index;
   document.getElementById('edit-modal-title').innerText = `Modifier le ${item.day}`;
   document.getElementById('edit-time').value = item.time === 'OFF' ? '' : item.time;
@@ -189,10 +132,11 @@ function openEditModal(index) {
   if (editModal) editModal.classList.remove('hidden');
 }
 
-gameSelect?.addEventListener('change', toggleCustomFields);
-
 function toggleCustomFields() {
+  const gameSelect = document.getElementById('edit-game-select');
+  const customFields = document.getElementById('custom-game-fields');
   if (!gameSelect || !customFields) return;
+
   if (gameSelect.value === 'CUSTOM') {
     customFields.classList.remove('hidden');
   } else {
@@ -200,58 +144,118 @@ function toggleCustomFields() {
   }
 }
 
-document.getElementById('edit-cancel')?.addEventListener('click', () => {
-  if (editModal) editModal.classList.add('hidden');
-});
+function updateAdminUI() {
+  const adminBtn = document.getElementById('admin-toggle-btn');
+  const btnText = document.getElementById('admin-btn-text');
+  const adminBar = document.getElementById('admin-bar');
 
-document.getElementById('edit-form')?.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const idx = document.getElementById('edit-day-index').value;
-  const selectValue = gameSelect ? gameSelect.value : 'OFF';
-  let gameTitle = '', gameImg = '';
-
-  if (selectValue === 'OFF') {
-    gameTitle = 'OFF';
-    gameImg = '';
-  } else if (selectValue === 'CUSTOM') {
-    gameTitle = document.getElementById('edit-custom-title').value || 'Jeu Inconnu';
-    gameImg = document.getElementById('edit-custom-img').value || '';
+  if (isAdmin) {
+    if (adminBtn) adminBtn.classList.add('active');
+    if (btnText) btnText.innerText = 'Quitter Édition';
+    if (adminBar) adminBar.classList.remove('hidden');
   } else {
-    const [title, img] = selectValue.split('|');
-    gameTitle = title;
-    gameImg = img;
+    if (adminBtn) adminBtn.classList.remove('active');
+    if (btnText) btnText.innerText = 'Mode Édition';
+    if (adminBar) adminBar.classList.add('hidden');
+  }
+  renderSchedule();
+}
+
+// --- ÉCOUTEURS GLOBAUX (S'ÉXÉCUTENT AU CHARGEMENT) ---
+document.addEventListener('DOMContentLoaded', () => {
+  const adminBtn = document.getElementById('admin-toggle-btn');
+  const pinModal = document.getElementById('pin-modal');
+  const gameSelect = document.getElementById('edit-game-select');
+
+  if (adminBtn) {
+    adminBtn.addEventListener('click', () => {
+      if (isAdmin) {
+        isAdmin = false;
+        updateAdminUI();
+      } else {
+        if (pinModal) pinModal.classList.remove('hidden');
+        document.getElementById('pin-input')?.focus();
+      }
+    });
   }
 
-  schedule[idx] = {
-    day: schedule[idx].day,
-    time: selectValue === 'OFF' ? 'OFF' : (document.getElementById('edit-time').value || '20h00'),
-    game: gameTitle,
-    img: gameImg,
-    desc: document.getElementById('edit-desc').value
-  };
+  document.getElementById('pin-cancel')?.addEventListener('click', () => {
+    if (pinModal) pinModal.classList.add('hidden');
+  });
 
-  try {
-    await setDoc(scheduleDocRef, { days: schedule });
+  document.getElementById('pin-submit')?.addEventListener('click', () => {
+    const pinInput = document.getElementById('pin-input');
+    if (pinInput && pinInput.value === adminPin) {
+      isAdmin = true;
+      if (pinModal) pinModal.classList.add('hidden');
+      pinInput.value = '';
+      updateAdminUI();
+    } else {
+      alert('Code PIN incorrect.');
+      if (pinInput) pinInput.value = '';
+    }
+  });
+
+  gameSelect?.addEventListener('change', toggleCustomFields);
+
+  document.getElementById('edit-cancel')?.addEventListener('click', () => {
+    const editModal = document.getElementById('edit-modal');
     if (editModal) editModal.classList.add('hidden');
-  } catch (err) {
-    console.error("Erreur de sauvegarde :", err);
-    alert("Erreur lors de la mise à jour sur Firebase.");
-  }
+  });
+
+  document.getElementById('edit-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const idx = document.getElementById('edit-day-index').value;
+    const selectValue = gameSelect ? gameSelect.value : 'OFF';
+    let gameTitle = '', gameImg = '';
+
+    if (selectValue === 'OFF') {
+      gameTitle = 'OFF';
+      gameImg = '';
+    } else if (selectValue === 'CUSTOM') {
+      gameTitle = document.getElementById('edit-custom-title').value || 'Jeu Inconnu';
+      gameImg = document.getElementById('edit-custom-img').value || '';
+    } else {
+      const [title, img] = selectValue.split('|');
+      gameTitle = title;
+      gameImg = img;
+    }
+
+    schedule[idx] = {
+      day: schedule[idx].day,
+      time: selectValue === 'OFF' ? 'OFF' : (document.getElementById('edit-time').value || '20h00'),
+      game: gameTitle,
+      img: gameImg,
+      desc: document.getElementById('edit-desc').value
+    };
+
+    try {
+      await setDoc(scheduleDocRef, { days: schedule });
+      const editModal = document.getElementById('edit-modal');
+      if (editModal) editModal.classList.add('hidden');
+    } catch (err) {
+      console.error("Erreur de sauvegarde :", err);
+      alert("Erreur lors de la mise à jour sur Firebase.");
+    }
+  });
+
+  document.getElementById('change-pin-btn')?.addEventListener('click', () => {
+    const newPin = prompt("Entre ton nouveau code PIN :");
+    if (newPin) {
+      adminPin = newPin;
+      localStorage.setItem('stream_pin', newPin);
+      alert("Code PIN mis à jour avec succès !");
+    }
+  });
+
+  document.getElementById('reset-default-btn')?.addEventListener('click', async () => {
+    if (confirm("Réinitialiser tout le planning avec les valeurs par défaut ?")) {
+      schedule = [...DEFAULT_SCHEDULE];
+      await setDoc(scheduleDocRef, { days: schedule });
+    }
+  });
 });
 
-// ACTIONS ADMIN
-document.getElementById('change-pin-btn')?.addEventListener('click', () => {
-  const newPin = prompt("Entre ton nouveau code PIN :");
-  if (newPin) {
-    adminPin = newPin;
-    localStorage.setItem('stream_pin', newPin);
-    alert("Code PIN mis à jour avec succès !");
-  }
-});
-
-document.getElementById('reset-default-btn')?.addEventListener('click', async () => {
-  if (confirm("Réinitialiser tout le planning avec les valeurs par défaut ?")) {
-    schedule = [...DEFAULT_SCHEDULE];
-    await setDoc(scheduleDocRef, { days: schedule });
-  }
-});
+// EXPOSITION DES FONCTIONS SUR PORTÉE GLOBALE (WINDOW)
+window.openEditModal = openEditModal;
+window.toggleCustomFields = toggleCustomFields;
