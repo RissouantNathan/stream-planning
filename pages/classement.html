@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Classement – Soirée Manon</title>
+<style>
+  :root{
+    --bg:#14111f; --card:#201b33; --card2:#2a2444; --txt:#f4f1ff; --muted:#a39ec2;
+    --gold:#ffd24a; --silver:#cfd6e4; --bronze:#d9894b; --accent:#ff5d8f;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:radial-gradient(1200px 600px at 50% -10%,#3a2a6b 0%,var(--bg) 60%) fixed;
+    color:var(--txt); font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    min-height:100vh; padding:24px 16px 48px;
+  }
+  .wrap{max-width:900px;margin:0 auto}
+  header{text-align:center;margin-bottom:28px}
+  h1{margin:0;font-size:clamp(1.8rem,5vw,2.8rem);letter-spacing:.5px}
+  .sub{color:var(--muted);margin-top:6px;font-size:.95rem}
+  .status{display:inline-flex;align-items:center;gap:8px;margin-top:10px;font-size:.8rem;color:var(--muted)}
+  .dot{width:8px;height:8px;border-radius:50%;background:#555}
+  .dot.ok{background:#4ade80}.dot.err{background:#f87171}
+
+  .banner{background:var(--card2);border:1px dashed #5a4f8c;color:var(--muted);
+    padding:12px 16px;border-radius:12px;text-align:center;margin-bottom:22px;font-size:.95rem}
+
+  /* Podium */
+  .podium{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;align-items:end;margin-bottom:28px}
+  .pod{background:var(--card);border-radius:16px 16px 6px 6px;padding:14px 8px 12px;text-align:center;
+    border-top:4px solid var(--c);position:relative}
+  .pod .medal{font-size:1.9rem;line-height:1}
+  .pod .name{font-weight:700;margin-top:6px;font-size:1.05rem;word-break:break-word}
+  .pod .pts{color:var(--c);font-weight:800;font-size:1.4rem;margin-top:2px}
+  .pod .pts small{font-size:.7rem;color:var(--muted);font-weight:500}
+  .pod.p1{--c:var(--gold);padding-top:28px;padding-bottom:22px;order:2}
+  .pod.p2{--c:var(--silver);order:1;padding-top:20px;padding-bottom:16px}
+  .pod.p3{--c:var(--bronze);order:3}
+  .pod.empty{opacity:.35}
+
+  /* Liste */
+  .list{display:flex;flex-direction:column;gap:10px}
+  .row{background:var(--card);border-radius:14px;padding:12px 14px;display:grid;
+    grid-template-columns:48px 1fr auto;gap:12px;align-items:center}
+  .rank{width:40px;height:40px;border-radius:50%;background:var(--card2);display:grid;place-items:center;
+    font-weight:800;font-size:1.05rem}
+  .row.r1 .rank{background:var(--gold);color:#3a2d00}
+  .row.r2 .rank{background:var(--silver);color:#26303f}
+  .row.r3 .rank{background:var(--bronze);color:#3b1f08}
+  .who .n{font-weight:700;font-size:1.05rem}
+  .balls{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+  .b{display:inline-flex;align-items:center;gap:4px;background:#00000033;border-radius:999px;
+    padding:2px 8px 2px 3px;font-size:.78rem;font-weight:600}
+  .b i{width:14px;height:14px;border-radius:50%;background:var(--bc);border:1px solid #ffffff55;display:block}
+  .none{color:var(--muted);font-size:.8rem;margin-top:6px}
+  .score{text-align:right;font-weight:800;font-size:1.5rem;color:var(--accent)}
+  .score small{display:block;font-size:.7rem;color:var(--muted);font-weight:500}
+
+  /* Boules restantes */
+  h2{font-size:1.1rem;margin:34px 0 12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:1px}
+  .stock{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
+  .s{background:var(--card);border-radius:12px;padding:10px 12px;display:flex;gap:10px;align-items:center}
+  .s i{width:26px;height:26px;border-radius:50%;background:var(--bc);border:2px solid #ffffff55;flex:none}
+  .s .t{font-size:.78rem;color:var(--muted);line-height:1.25}
+  .s .t b{color:var(--txt);font-size:1rem}
+  .s.out{opacity:.4}
+
+  @media (max-width:480px){
+    .pod .name{font-size:.9rem}.pod .pts{font-size:1.15rem}
+    .row{grid-template-columns:40px 1fr auto;padding:10px}
+    .rank{width:34px;height:34px;font-size:.95rem}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🎱 Classement – Soirée Manon</h1>
+    <div class="sub">Qui a ramassé les plus belles boules ?</div>
+    <div class="status"><span class="dot" id="dot"></span><span id="statusTxt">Chargement…</span></div>
+  </header>
+
+  <div id="banner"></div>
+  <section class="podium" id="podium"></section>
+  <section class="list" id="list"></section>
+
+  <h2>Boules restantes</h2>
+  <section class="stock" id="stock"></section>
+</div>
+
+<script>
+/* ==== CONFIGURATION ==== */
+const SHEET_ID = "1AK78WD4FgxzEYHNsuqRz227jNog1Lu682f7rbD14lrE";
+const GID = 0;              // identifiant de l'onglet « Feuille 1 »
+const REFRESH_SECONDS = 30; // 0 = pas d'actualisation automatique
+const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=${GID}`;
+
+/* Données de secours (état de la feuille au moment de la création) */
+const FALLBACK_CSV = `Nom,Boule Rouge,Boule Violette,Boule Jaune,Boule Orange,Boule Rose,Boule verte,Boule Blanche,Boule bleu clair,Boule Bleu foncé,Points:,Total de boule,Boule Rouge,Boule Violette,Boule Jaune,Boule Orange,Boule Rose,Boule verte,Boule Blanche,Boule bleu clair,Boule Bleu foncé
+Manon,0,0,0,0,0,0,0,0,0,0,Nombre de boule,1,1,3,4,5,5,5,6,6
+Arnaud,0,0,0,0,0,0,0,0,0,0,Valeur PTS:,50,50,40,30,25,20,15,10,5
+Nico,0,0,0,0,0,0,0,0,0,0,Boule restante:,1,1,3,4,5,5,5,6,6
+Brad,0,0,0,0,0,0,0,0,0,0,,,,,,,,,,
+Laura,0,0,0,0,0,0,0,0,0,0,,,,,,,,,,
+Noelix,0,0,0,0,0,0,0,0,0,0,,,,,,,,,,
+Nathan,0,0,0,0,0,0,0,0,0,0,,,,,,,,,,`;
+
+const COLORS = [
+  ["rouge","#e53935"],["violet","#9c27b0"],["jaune","#fdd835"],["orange","#fb8c00"],
+  ["rose","#f48fb1"],["verte","#43a047"],["blanche","#fafafa"],
+  ["clair","#4fc3f7"],["fonc","#1e40af"]
+];
+const colorOf = h => {
+  const k = h.toLowerCase();
+  // « bleu clair » / « bleu foncé » avant les autres
+  for (const [key,c] of COLORS) if (k.includes(key)) return c;
+  return "#888";
+};
+const shortName = h => h.replace(/^boule\s+/i,"").trim().replace(/^./,c=>c.toUpperCase());
+
+/* Parseur CSV (gère guillemets et virgules dans les champs) */
+function parseCSV(text){
+  const rows=[]; let row=[], cur="", q=false;
+  for (let i=0;i<text.length;i++){
+    const ch=text[i];
+    if (q){
+      if (ch==='"'){ if (text[i+1]==='"'){cur+='"';i++;} else q=false; }
+      else cur+=ch;
+    } else if (ch==='"') q=true;
+    else if (ch===","){ row.push(cur); cur=""; }
+    else if (ch==="\n"||ch==="\r"){
+      if (ch==="\r" && text[i+1]==="\n") i++;
+      row.push(cur); rows.push(row); row=[]; cur="";
+    } else cur+=ch;
+  }
+  if (cur!==""||row.length){ row.push(cur); rows.push(row); }
+  return rows;
+}
+const num = v => { const n = parseFloat(String(v??"").replace(",",".").replace(/\s/g,"")); return isNaN(n)?0:n; };
+const esc = s => String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function build(csv){
+  const rows = parseCSV(csv);
+  const head = rows[0];
+  // Boules du joueur : colonnes B→J (indices 1 à 9)
+  const ballCols = [1,2,3,4,5,6,7,8,9];
+  // Tableau de référence : colonnes M→U (indices 12 à 20)
+  const refCols = [12,13,14,15,16,17,18,19,20];
+  const value = refCols.map(c => num(rows[2]?.[c]));   // ligne « Valeur PTS »
+  const total = refCols.map(c => num(rows[1]?.[c]));   // ligne « Nombre de boule »
+  const remain = refCols.map(c => rows[3]?.[c]!=="" && rows[3]?.[c]!=null ? num(rows[3][c]) : null);
+
+  const players = [];
+  for (let r=1;r<rows.length;r++){
+    const name = (rows[r][0]||"").trim();
+    if (!name) continue;
+    const counts = ballCols.map(c=>num(rows[r][c]));
+    const computed = counts.reduce((s,n,i)=>s+n*(value[i]||0),0);
+    const cell = rows[r][10];
+    const pts = (cell!==undefined && cell!=="" && !isNaN(parseFloat(cell))) ? num(cell) : computed;
+    players.push({name,counts,pts});
+  }
+  players.sort((a,b)=>b.pts-a.pts || a.name.localeCompare(b.name,"fr"));
+  // Rangs avec égalités
+  players.forEach((p,i)=>{ p.rank = (i>0 && p.pts===players[i-1].pts) ? players[i-1].rank : i+1; });
+
+  const ballInfo = ballCols.map((c,i)=>({name:shortName(head[c]||""),color:colorOf(head[c]||"")}));
+  return {players,ballInfo,total,remain};
+}
+
+function render({players,ballInfo,total,remain}){
+  const allZero = players.every(p=>p.pts===0);
+  document.getElementById("banner").innerHTML = allZero
+    ? `<div class="banner">La partie n'a pas encore commencé — personne n'a de points pour l'instant.</div>` : "";
+
+  // Podium
+  const medals=["🥇","🥈","🥉"], cls=["p1","p2","p3"];
+  document.getElementById("podium").innerHTML = [0,1,2].map(i=>{
+    const p = players[i];
+    if (!p) return `<div class="pod ${cls[i]} empty"><div class="medal">${medals[i]}</div><div class="name">—</div></div>`;
+    return `<div class="pod ${cls[i]}"><div class="medal">${medals[i]}</div>
+      <div class="name">${esc(p.name)}</div><div class="pts">${p.pts} <small>pts</small></div></div>`;
+  }).join("");
+
+  // Liste complète
+  document.getElementById("list").innerHTML = players.map(p=>{
+    const balls = p.counts.map((n,i)=>n>0?`<span class="b" style="--bc:${ballInfo[i].color}" title="${esc(ballInfo[i].name)}"><i></i>${n}</span>`:"").join("");
+    const nb = p.counts.reduce((a,b)=>a+b,0);
+    return `<div class="row ${p.rank<=3?'r'+p.rank:''}">
+      <div class="rank">${p.rank}</div>
+      <div class="who"><div class="n">${esc(p.name)}</div>
+        ${balls?`<div class="balls">${balls}</div>`:`<div class="none">Aucune boule</div>`}</div>
+      <div class="score">${p.pts}<small>${nb} boule${nb>1?"s":""}</small></div></div>`;
+  }).join("");
+
+  // Boules restantes
+  document.getElementById("stock").innerHTML = ballInfo.map((b,i)=>{
+    const left = remain[i]!==null ? remain[i] : total[i];
+    return `<div class="s ${left<=0?'out':''}" style="--bc:${b.color}"><i></i>
+      <div class="t">${esc(b.name)}<br><b>${left}</b> / ${total[i]}</div></div>`;
+  }).join("");
+}
+
+function setStatus(ok,msg){
+  document.getElementById("dot").className="dot "+(ok?"ok":"err");
+  document.getElementById("statusTxt").textContent=msg;
+}
+
+async function load(){
+  try{
+    const res = await fetch(CSV_URL,{cache:"no-store"});
+    if(!res.ok) throw new Error(res.status);
+    render(build(await res.text()));
+    setStatus(true,"Mis à jour à "+new Date().toLocaleTimeString("fr-FR"));
+  }catch(e){
+    render(build(FALLBACK_CSV));
+    setStatus(false,"Connexion à la feuille impossible – données de secours affichées");
+  }
+}
+load();
+if (REFRESH_SECONDS>0) setInterval(load, REFRESH_SECONDS*1000);
+</script>
+</body>
+</html>
